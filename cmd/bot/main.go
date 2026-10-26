@@ -14,9 +14,9 @@ import (
 var (
 	ConfigFlag = &cli.StringFlag{
 		Name:    "config",
-		Value:   "./bot.toml",
+		Value:   "./bot.mainnet.toml",
 		Aliases: []string{"c"},
-		Usage:   "path to config file",
+		Usage:   "path to mainnet config file",
 		EnvVars: []string{"BOT_CONFIG"},
 	}
 )
@@ -51,6 +51,8 @@ func newCli(GitCommit string, GitDate string) *cli.App {
 		Version:              params.VersionWithCommit(GitCommit, GitDate),
 		Description:          "opbnb-bridge-bot",
 		EnableBashCompletion: true,
+		Flags:                flags,
+		Action:               RunCommand,
 		Commands: []*cli.Command{
 			{
 				Name:        "run",

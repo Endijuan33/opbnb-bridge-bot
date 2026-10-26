@@ -51,7 +51,7 @@ crytic-export
 
 # Ignore building artifacts
 build/
-bot
+/bot
 
 # Ignore the configuration files
 bot.toml

@@ -9,9 +9,7 @@ build-go:
 	env GO111MODULE=on go build -v $(LDFLAGS) ./cmd/bot
 
 build-solidity:
-	pushd contracts; \
-	forge build; \
-	popd;
+	cd contracts && forge build
 
 bindings: bindings-L2StandardBridgeBot bindings-OptimismPortal
 

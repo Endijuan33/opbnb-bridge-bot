@@ -11,7 +11,7 @@ import (
 // WithdrawToEventSig is the signature for the WithdrawTo event:
 //
 // ```
-// WithdrawTo(address indexed from, address l2Token, address to, uint256 amount, uint32 minGasLimit, bytes extraData);
+// WithdrawTo(address indexed from, address indexed l2Token, address to, uint256 amount, uint32 minGasLimit, bytes extraData);
 // ```
 func WithdrawToEventSig() common.Hash {
 	eventSignature := "WithdrawTo(address,address,address,uint256,uint32,bytes)"

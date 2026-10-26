@@ -38,9 +38,14 @@ func RunCommand(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("dial endpoint %s: %w", cfg.RPCs.L1RPC, err)
 	}
+	defer l1Client.Close()
 	l2Client, err := core.Dial(cfg.RPCs.L2RPC)
 	if err != nil {
 		return fmt.Errorf("dial endpoint %s: %w", cfg.RPCs.L2RPC, err)
+	}
+	defer l2Client.Close()
+	if err := core.ValidateNetworks(ctx.Context, cfg, l1Client, l2Client); err != nil {
+		return fmt.Errorf("validate mainnet RPCs: %w", err)
 	}
 
 	// Connect to database and ensure schemas initialized

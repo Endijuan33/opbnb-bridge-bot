@@ -18,6 +18,8 @@ interface IL2StandardBridge {
 contract L2StandardBridgeBot is Ownable {
     using SafeERC20 for IERC20;
 
+    // opBNB mainnet L2StandardBridge predeploy (chain ID 204).
+    // https://docs.bnbchain.org/bnb-opbnb/core-concepts/opbnb-protocol-addresses/
     address public constant L2_STANDARD_BRIDGE_ADDRESS = 0x4200000000000000000000000000000000000010;
     IL2StandardBridge public L2_STANDARD_BRIDGE = IL2StandardBridge(payable(L2_STANDARD_BRIDGE_ADDRESS));
 

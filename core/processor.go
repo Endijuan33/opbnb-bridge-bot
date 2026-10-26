@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -41,6 +42,7 @@ func NewProcessor(
 	cfg Config,
 ) *Processor {
 	l2Contracts := config.L2ContractsFromPredeploys()
+	l2Contracts.L2StandardBridge = common.HexToAddress(cfg.L2StandardBridge)
 
 	var whitelistL2TokenMap map[common.Address]struct{} = nil
 	if cfg.L2StandardBridgeBot.WhitelistL2TokenList != nil {
@@ -383,9 +385,10 @@ func (b *Processor) toMessagePassed(messagePassedLog *types.Log) (*bindings.L2To
 	addressType, _ := abi.NewType("address", "", nil)
 	L2ToL1MessagePasserAbi, _ := bindings.L2ToL1MessagePasserMetaData.GetAbi()
 
-	if messagePassedLog.Address == b.L2Contracts.L2ToL1MessagePasser &&
-		len(messagePassedLog.Topics) > 0 &&
-		messagePassedLog.Topics[0] == L2ToL1MessagePasserAbi.Events["MessagePassed"].ID {
+	if messagePassedLog.Address != b.L2Contracts.L2ToL1MessagePasser ||
+		len(messagePassedLog.Topics) != 4 ||
+		messagePassedLog.Topics[0] != L2ToL1MessagePasserAbi.Events["MessagePassed"].ID {
+		return nil, errors.New("invalid log: not MessagePassed event")
 	}
 
 	messagePassedEvent := bindings.L2ToL1MessagePasserMessagePassed{}
@@ -400,12 +403,6 @@ func (b *Processor) toMessagePassed(messagePassedLog *types.Log) (*bindings.L2To
 	)
 	if err != nil {
 		return nil, fmt.Errorf("parse indexed event arguments from log.topics of MessagePassed event, err: %v", err)
-	}
-
-	// NOTE: log.Data only contains the non-indexed arguments
-	err = L2ToL1MessagePasserAbi.UnpackIntoInterface(&messagePassedEvent, "MessagePassed", messagePassedLog.Data)
-	if err != nil {
-		return nil, fmt.Errorf("parse non-indexed event arguments from log.data of SentMessage event, err: %v", err)
 	}
 
 	// NOTE: log.Data only contains the non-indexed arguments
@@ -574,6 +571,20 @@ func (b *Processor) toLowLevelMessage(
 		Value:    sentMessageEvent.Value,
 		GasLimit: messagePassedEvent.GasLimit,
 		Data:     relayMessageCalldata,
+	}
+	// Check the reconstructed withdrawal against the emitted mainnet message.
+	if messagePassedEvent.Sender != withdrawalTx.Sender ||
+		messagePassedEvent.Target != withdrawalTx.Target ||
+		messagePassedEvent.Value.Cmp(withdrawalTx.Value) != 0 ||
+		!bytes.Equal(messagePassedEvent.Data, withdrawalTx.Data) {
+		return nil, errors.New("reconstructed withdrawal does not match MessagePassed")
+	}
+	withdrawalHash, err := b.hashWithdrawal(&withdrawalTx)
+	if err != nil {
+		return nil, err
+	}
+	if common.HexToHash(withdrawalHash) != messagePassedEvent.WithdrawalHash {
+		return nil, errors.New("reconstructed withdrawal hash does not match MessagePassed")
 	}
 	return &withdrawalTx, nil
 }

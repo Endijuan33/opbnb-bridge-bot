@@ -2,17 +2,17 @@ version: '3.8'
 
 services:
   mysql:
-    image: mysql:latest
+    image: mysql:8.0
     environment:
       - MYSQL_ROOT_PASSWORD=db_password
-      - MYSQL_DATABASE=db_name
+      - MYSQL_DATABASE=opbnb_bridge_bot_mainnet
       - MYSQL_USER=db_username
       - MYSQL_PASSWORD=db_password
     command: --default-authentication-plugin=mysql_native_password
     ports:
       - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_mainnet_data:/var/lib/mysql
 
   prometheus:
     image: prom/prometheus
@@ -39,5 +39,5 @@ services:
       - ./grafana:/etc/grafana/provisioning/datasources
 
 volumes:
-  mysql_data:
+  mysql_mainnet_data:
   prom_data:

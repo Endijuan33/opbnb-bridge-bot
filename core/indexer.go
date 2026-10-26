@@ -57,14 +57,14 @@ func NewIndexer(log log.Logger, db *gorm.DB, l2Client *ClientExt, cfg Config) *I
 			L2StandardBridgeAbi, _                 = bindings.L2StandardBridgeMetaData.GetAbi()
 			L2StandardBridgeWithdrawalInitiatedSig = L2StandardBridgeAbi.Events["WithdrawalInitiated"].ID
 		)
-		return len(vlog.Topics) > 1 && vlog.Topics[0] == L2StandardBridgeWithdrawalInitiatedSig
+		return vlog.Address == common.HexToAddress(cfg.L2StandardBridge) && len(vlog.Topics) > 1 && vlog.Topics[0] == L2StandardBridgeWithdrawalInitiatedSig
 	}
 	isL2StandardBridgeBotWithdrawToEvent := func(log *types.Log) bool {
 		var (
 			L2StandardBridgeBotAbi, _        = bindings2.L2StandardBridgeBotMetaData.GetAbi()
 			L2StandardBridgeBotWithdrawToSig = L2StandardBridgeBotAbi.Events["WithdrawTo"].ID
 		)
-		if len(log.Topics) > 0 && log.Topics[0] == L2StandardBridgeBotWithdrawToSig {
+		if len(log.Topics) == 3 && log.Topics[0] == L2StandardBridgeBotWithdrawToSig {
 			_, ok := l2StandardBridgeBots[log.Address]
 			return ok
 		}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -17,12 +18,17 @@ import (
 
 const (
 	defaultLogFilterBlockRange = 100
+	MainnetChallengeTimeWindow = 7 * 24 * 60 * 60
+	L2StandardBridgeAddress    = "0x4200000000000000000000000000000000000010"
 )
 
 type Config struct {
-	L2StartingNumber    int64 `toml:"l2-starting-number"`
-	ProposeTimeWindow   int64 `toml:"propose-time-window"`
-	ChallengeTimeWindow int64 `toml:"challenge-time-window"`
+	L1ChainID           uint64 `toml:"l1-chain-id"`
+	L2ChainID           uint64 `toml:"l2-chain-id"`
+	L2StandardBridge    string `toml:"l2-standard-bridge"`
+	L2StartingNumber    int64  `toml:"l2-starting-number"`
+	ProposeTimeWindow   int64  `toml:"propose-time-window"`
+	ChallengeTimeWindow int64  `toml:"challenge-time-window"`
 
 	RPCs                config.RPCsConfig         `toml:"rpcs"`
 	DB                  config.DBConfig           `toml:"db"`
@@ -32,7 +38,7 @@ type Config struct {
 }
 
 type TxSignerConfig struct {
-	Privkey  string `toml:"privkey"`
+	Privkey  string `toml:"-"`
 	GasPrice int64  `toml:"gas-price"`
 }
 
@@ -73,27 +79,48 @@ func LoadConfig(log log.Logger, path string) (Config, error) {
 	}
 
 	data = []byte(os.ExpandEnv(string(data)))
-	log.Debug("parsed config file", "data", string(data))
 	if _, err := toml.Decode(string(data), &conf); err != nil {
 		log.Info("failed to decode config file", "err", err)
 		return conf, err
+	}
+	conf.TxSigner.Privkey = os.Getenv("OPBNB_BRIDGE_BOT_PRIVKEY")
+	if conf.TxSigner.Privkey == "" {
+		return conf, errors.New("OPBNB_BRIDGE_BOT_PRIVKEY must be set")
+	}
+	if conf.L1ChainID != 56 || conf.L2ChainID != 204 {
+		return conf, errors.New("mainnet requires l1-chain-id = 56 and l2-chain-id = 204")
+	}
+	if !common.IsHexAddress(conf.L2StandardBridge) || common.HexToAddress(conf.L2StandardBridge) != common.HexToAddress(L2StandardBridgeAddress) {
+		return conf, fmt.Errorf("l2-standard-bridge must be %s", L2StandardBridgeAddress)
+	}
+	if !common.IsHexAddress(conf.L2StandardBridgeBot.ContractAddress) || common.HexToAddress(conf.L2StandardBridgeBot.ContractAddress) == (common.Address{}) {
+		return conf, errors.New("l2-standard-bridge-bot.contract-address must be a nonzero address")
+	}
+	if conf.RPCs.L1RPC == "" || conf.RPCs.L2RPC == "" {
+		return conf, errors.New("l1-rpc and l2-rpc must be set")
+	}
+	if conf.L2StartingNumber < 0 {
+		return conf, errors.New("l2-starting-number must be nonnegative")
 	}
 
 	if conf.L2StandardBridgeBot.LogFilterBlockRange == 0 {
 		log.Info("setting default log filter block range", "log-filter-block-range", defaultLogFilterBlockRange)
 		conf.L2StandardBridgeBot.LogFilterBlockRange = defaultLogFilterBlockRange
 	}
-	if conf.ProposeTimeWindow == 0 {
+	if conf.L2StandardBridgeBot.LogFilterBlockRange < 0 {
+		return conf, errors.New("log-filter-block-range must be positive")
+	}
+	if conf.ProposeTimeWindow <= 0 {
 		return conf, errors.New("propose-time-window must be set")
 	}
-	if conf.ChallengeTimeWindow == 0 {
-		return conf, errors.New("challenge-time-window must be set")
+	if conf.ChallengeTimeWindow != MainnetChallengeTimeWindow {
+		return conf, errors.New("mainnet challenge-time-window must be 604800 seconds (7 days)")
 	}
 
 	if _, _, err = conf.SignerKeyPair(); err != nil {
 		return conf, err
 	}
-	if conf.TxSigner.GasPrice == 0 {
+	if conf.TxSigner.GasPrice <= 0 {
 		return conf, errors.New("gas-price must be set")
 	}
 
@@ -102,7 +129,7 @@ func LoadConfig(log log.Logger, path string) (Config, error) {
 }
 
 func (c *Config) SignerKeyPair() (*ecdsa.PrivateKey, *common.Address, error) {
-	privkey, err := crypto.HexToECDSA(c.TxSigner.Privkey)
+	privkey, err := crypto.HexToECDSA(strings.TrimPrefix(c.TxSigner.Privkey, "0x"))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse privkey: %w", err)
 	}

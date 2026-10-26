@@ -9,7 +9,7 @@ contract L2StandardBridgeBotTest is Test {
     L2StandardBridgeBot bot;
     uint256 opbnbMainnetFork;
     address deployer = address(0x1234);
-    address usdt = 0xCF712f20c85421d00EAa1B6F6545AaEEb4492B75;
+    address usdt = 0x9e5AAC1Ba1a2e6aEd6b32689DFcF62A509Ca96f3;
     address user = 0x3977f9B1F4912a783B44aBa813dA388AC73a1428;
     uint withdrawFee = 10000;
     address constant LEGACY_ERC20_ETH = 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000;
@@ -20,10 +20,12 @@ contract L2StandardBridgeBotTest is Test {
     event SentMessageExtension1(address indexed sender , uint256 value);
 
     function setUp() public {
-        opbnbMainnetFork = vm.createFork("https://opbnb-testnet.nodereal.io/v1/e9a36765eb8a40b9bd12e680a1fd2bc5");
+        opbnbMainnetFork = vm.createFork("opbnb_mainnet");
         vm.selectFork(opbnbMainnetFork);
-        vm.rollFork(opbnbMainnetFork, 7125821);
         bot = new L2StandardBridgeBot(payable(deployer), withdrawFee);
+        vm.deal(user, 1 ether);
+        vm.deal(address(this), 1 ether);
+        deal(usdt, user, 1000);
     }
 
     function test_RevertSetDelegationFeeNotOwner() public {

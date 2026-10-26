@@ -1,66 +1,24 @@
-## Foundry
+# L2StandardBridgeBot on opBNB mainnet
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+The helper uses the opBNB mainnet L2StandardBridge predeploy at
+`0x4200000000000000000000000000000000000010` (chain ID 204).
+`WithdrawTo(address,address,address,uint256,uint32,bytes)` has indexed `from`
+and `l2Token` arguments and matches the Go binding in `../bindings`.
 
-Foundry consists of:
+From the repository root:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+git submodule update --init --recursive
+make build-solidity
 ```
 
-### Test
+The fork tests use mainnet state and execute transactions only inside the local fork:
 
-```shell
-$ forge test
+```bash
+OPBNB_MAINNET=https://opbnb-mainnet-rpc.bnbchain.org forge test --root contracts
 ```
 
-### Format
+See the [mainnet deployment and usage instructions](../README.md#deploy-and-use-contracts)
+for commands to use later. Building and testing do not deploy or broadcast transactions.
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Foundry documentation: https://book.getfoundry.sh/

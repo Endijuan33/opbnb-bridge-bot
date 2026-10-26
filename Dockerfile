@@ -13,7 +13,6 @@ COPY ./bindings    /app/bindings
 COPY ./core        /app/core
 COPY ./cmd         /app/cmd
 COPY ./Makefile    /app/Makefile
-COPY ./bot.testnet.toml    /app/bot.testnet.toml
 COPY ./bot.mainnet.toml    /app/bot.mainnet.toml
 
 WORKDIR /app/
@@ -22,8 +21,11 @@ RUN make build-go
 
 FROM alpine:3.18
 
+RUN apk add --no-cache ca-certificates
+
 COPY --from=builder /app/bot              /usr/local/bin
-COPY --from=builder /app/bot.testnet.toml /bot.testnet.toml
-COPY --from=builder /app/bot.mainnet.toml /bot.mainnet.toml
+COPY --from=builder /app/bot.mainnet.toml /app/bot.mainnet.toml
 
 WORKDIR /app
+
+ENTRYPOINT ["/usr/local/bin/bot"]

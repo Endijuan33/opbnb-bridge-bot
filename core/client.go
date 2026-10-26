@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -44,6 +45,29 @@ func Dial(rawUrl string) (*ClientExt, error) {
 	return &ClientExt{*client}, nil
 }
 
+// ValidateNetworks checks both RPCs before the bot indexes data or sends transactions.
+func ValidateNetworks(ctx context.Context, cfg Config, l1Client, l2Client *ClientExt) error {
+	for _, network := range []struct {
+		name    string
+		client  *ClientExt
+		chainID uint64
+	}{
+		{"L1", l1Client, cfg.L1ChainID},
+		{"L2", l2Client, cfg.L2ChainID},
+	} {
+		requestCtx, cancel := context.WithTimeout(ctx, defaultRequestTimeout)
+		chainID, err := network.client.ChainID(requestCtx)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("read %s chain ID: %w", network.name, err)
+		}
+		if chainID.Cmp(new(big.Int).SetUint64(network.chainID)) != 0 {
+			return fmt.Errorf("%s chain ID mismatch: got %s, want %d", network.name, chainID, network.chainID)
+		}
+	}
+	return nil
+}
+
 func (c *ClientExt) GetProof(address common.Address, storageKeys []string, blockNumber *big.Int) (*eth.AccountResult, error) {
 	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
 	defer cancel()
@@ -83,7 +107,7 @@ func (c *ClientExt) CallContract(ctx context.Context, call ethereum.CallMsg, blo
 
 func (c *ClientExt) GetHeaderByTag(ctx context.Context, blockTag string) (*types.Header, error) {
 	var result types.Header
-	err := c.Client.Client().CallContext(ctx, &result, "eth_getHeaderByNumber", blockTag)
+	err := c.Client.Client().CallContext(ctx, &result, "eth_getBlockByNumber", blockTag, false)
 	if err != nil {
 		return nil, err
 	}
